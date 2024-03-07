@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: { { .Values.bbdd.name } }
+  labels:
+    app: { { .Values.bbdd.app } }
+
+spec:
+  { { - if not .Values.autoscaling.enabled } }
+  replicas: { { .Values.bbdd.replicaCount } }
+  { { - end } }
+  selector:
+    matchLabels:
+      app: { { .Values.bbdd.app } }
+  template:
+    metadata:
+      labels:
+        app: { { .Values.bbdd.app } }
+    spec:
+      containers:
+        - name: { { .Values.bbdd.name } }-container
+          image: "{{ .Values.bbdd.image }}:{{ .Values.bbdd.tag }}"
+          resources:
+            { { - toYaml .Values.bbdd.resources | nindent 12 } }
+          ports:
+          -  containerPort: { { .Values.bbdd.service.port } }
+             protocol: { { .Values.bbdd.service.protocol } }
+          env:
+            - { { - range $key, $val := .Values.bbdd.env } }
+              name: { { $key } }
+              value: { { $val | quote } }
+            { { - end } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: { { .Values.bbdd.app } }service
+spec:
+  selector:
+    app: { { .Values.bbdd.app } }
+  ports:
+    - name: { { .Values.bbdd.app } }serviceport
+      port: { { .Values.bbdd.service.port } }
+      targetPort: { { .Values.bbdd.service.targetPort } }
+      protocol: { { .Values.bbdd.service.protocol } }
+

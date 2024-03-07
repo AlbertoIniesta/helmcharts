@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "flaskchart.fullname" . }}
+  labels:
+    {{- include "flaskchart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.flask.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "flaskchart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "flaskchart.labels" . | nindent 8 }}
+          {{- with .Values.podLabels }}
+          {{- toYaml . | nindent 8 }}
+          {{- end }}
+    spec:
+      containers:
+        - name: { { .Values.flask.name } }-container
+          image: "{{ .Values.flask.image }}:{{ .Values.flask.tag }}"
+          ports:
+            - containerPort: { { .Values.flask.service.port } }
+              protocol: { { .Values.flask.service.protocol } }
+          resources:
+            {{- toYaml .Values.flask.resources | nindent 12 }}
+          env:
+            - { { - range $key, $val := .Values.flask.env } }
+              name: { { $key } }
+              value: { { $val | quote } }
+              { { - end } }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flaskchart.fullname" . }}
+spec:
+  type: {{ .Values.flask.service.type }}
+  ports:
+    - port: {{ .Values.flask.service.port }}
+      targetPort: { { .Values.flask.service.targetPort } }
+      nodePort: { { .Values.flask.service.nodePort } }
+  selector:
+    {{- include "flaskchart.selectorLabels" . | nindent 4 }}
